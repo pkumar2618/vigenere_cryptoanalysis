@@ -18,7 +18,7 @@ def get_gcd_divisors(number):
 
 def kasiski(file_name):
     repeating_graphs_dict = defaultdict(list)
-    with open(file_name) as f_read:
+    with open(file_name, 'r') as f_read:
         cipher = f_read.read()
         for j in [2, 3, 4, 5, 6]:
             for i in range(len(cipher) - j + 1):
@@ -61,10 +61,37 @@ def kasiski(file_name):
     return key_size_counter
 
 
-def incident_coeff():
+def incident_coeff(cipher_text_file, key_sizes, print_key = False):
+    with open(cipher_text_file, 'r') as f_read:
+        cipher = f_read.read()
+        cipher_len = len(cipher)
+        keys_sub_ics = {}
+        for key_size in key_sizes:
+            sub_strings_ic = {}
+            for i in range(key_size):
+                i_count = Counter([cipher[j] for j in range(i, cipher_len, key_size)])
+                N = sum(i_count.values())
+                IC_value = sum([v*(v-1) for v in i_count.values()])/ (N*(N-1))
+                sub_strings_ic[i] = IC_value
+                if print_key:
+                    if IC_value >= 0.065 and IC_value < 0.068:
+                        return key_size
+
+            keys_sub_ics[key_size] = sub_strings_ic
+            current_ic = 1
+        return keys_sub_ics
+
+
+def mutual_ic(cipher_text_file, key_sizes, print_key = False):
     pass
 
-
+def decipher(cipher_text_file, key_size):
+    """
+    :param cipher_text_file:
+    :param key_size:
+    :return: plain_text and key
+    """
+    pass
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -82,4 +109,7 @@ if __name__ == '__main__':
                 continue
             else:
                 keys_to_try.append(k)
-        print(keys_to_try)
+        # print(keys_to_try)
+
+        keys_sub_ics = incident_coeff(file_name, keys_to_try, print_key=True)
+        print(keys_sub_ics)
