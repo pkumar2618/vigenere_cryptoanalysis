@@ -5,19 +5,6 @@ import os
 import numpy as np
 english_alphabets = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-def find_gcd(numbers):
-    x = numbers[0]
-    for i in range(1, len(numbers)):
-        x = gcd(x,numbers[i])
-    return x
-
-def get_gcd_divisors(number):
-    divisors = [1]
-    for i in range(2, int(sqrt(number)+1)):
-        if number%i == 0:
-            divisors.append(i)
-    return divisors
-
 def kasiski(file_name):
     repeating_graphs_dict = defaultdict(list)
     with open(file_name, 'r') as f_read:
@@ -62,6 +49,19 @@ def kasiski(file_name):
     # print(key_size_counter)
     return key_size_counter
 
+def find_gcd(numbers):
+    x = numbers[0]
+    for i in range(1, len(numbers)):
+        x = gcd(x,numbers[i])
+    return x
+
+def get_gcd_divisors(number):
+    divisors = [1]
+    for i in range(2, int(sqrt(number)+1)):
+        if number%i == 0:
+            divisors.append(i)
+    return divisors
+
 
 def key_len_subs_ic(cipher_text_file, key_sizes, print_key = False):
     with open(cipher_text_file, 'r') as f_read:
@@ -87,6 +87,36 @@ def key_len_subs_ic(cipher_text_file, key_sizes, print_key = False):
             return keys_sub_ics
 
 
+def index_coincidence(x_string):
+    x_f = Counter(x_string)
+    x_n = sum(x_f.values())
+    IC_numerator = 0
+    for k in x_f.keys():
+        IC_numerator  += x_f[k]*(x_f[k]-1)
+    return IC_numerator/(x_n*(x_n-1))
+
+def mic_rel_sift(x_string, y_string):
+    x_f = Counter(x_string)
+    x_n = sum(x_f.values())
+
+    y_original = Counter(y_string)
+
+    symbol = Symbol()
+    mic_trend = []
+    for sift in range(26):
+        y_sifted = Counter()
+        for k in y_original:
+            y_sifted[symbol.sifted_symbol(k, sift)] = y_original[k]
+
+        mic_y_sifted = mutual_ic(x_f, y_sifted, type='Counter')
+        mic_trend.append(mic_y_sifted)
+
+    # finding the rel sift
+    sift = np.argmax(np.array(mic_trend))
+    # sifts = [sift for sift, value in enumerate(mic_trend) if value >= 0.059 and value < 0.07]
+    return sift
+
+
 def mutual_ic(x_string, y_string, type='string'):
     if type == 'string':
         x_f = Counter(x_string)
@@ -106,23 +136,6 @@ def mutual_ic(x_string, y_string, type='string'):
     for k in common_symbols:
         MIC_numerator  += x_f[k]*y_f[k]
     return MIC_numerator/(x_n*y_n)
-
-class Symbol():
-    def __init__(self):
-        self.symbol_sift = {}
-        self.sift_symbol = {}
-        symbols = english_alphabets
-        for i in range(len(symbols)):
-            self.symbol_sift[symbols[i]] = i
-            self.sift_symbol[i] = symbols[i]
-
-    def to_sift(self, symbol):
-        return self.symbol_sift[symbol]
-
-    def sifted_symbol(self, symbol, sift):
-        original_position = self.symbol_sift[symbol]
-        sifted_position = (original_position + sift)%26
-        return self.sift_symbol[sifted_position]
 
 
 def find_key_text(cipher_text_file, key_len, print_key = False):
@@ -185,35 +198,23 @@ def vigenere_decipher(cipher, key):
     return plain_text
 
 
-def mic_rel_sift(x_string, y_string):
-    x_f = Counter(x_string)
-    x_n = sum(x_f.values())
 
-    y_original = Counter(y_string)
+class Symbol():
+    def __init__(self):
+        self.symbol_sift = {}
+        self.sift_symbol = {}
+        symbols = english_alphabets
+        for i in range(len(symbols)):
+            self.symbol_sift[symbols[i]] = i
+            self.sift_symbol[i] = symbols[i]
 
-    symbol = Symbol()
-    mic_trend = []
-    for sift in range(26):
-        y_sifted = Counter()
-        for k in y_original:
-            y_sifted[symbol.sifted_symbol(k, sift)] = y_original[k]
+    def to_sift(self, symbol):
+        return self.symbol_sift[symbol]
 
-        mic_y_sifted = mutual_ic(x_f, y_sifted, type='Counter')
-        mic_trend.append(mic_y_sifted)
-
-    # finding the rel sift
-    sift = np.argmax(np.array(mic_trend))
-    # sifts = [sift for sift, value in enumerate(mic_trend) if value >= 0.059 and value < 0.07]
-    return sift
-
-def index_coincidence(x_string):
-    x_f = Counter(x_string)
-    x_n = sum(x_f.values())
-    IC_numerator = 0
-    for k in x_f.keys():
-        IC_numerator  += x_f[k]*(x_f[k]-1)
-    return IC_numerator/(x_n*(x_n-1))
-
+    def sifted_symbol(self, symbol, sift):
+        original_position = self.symbol_sift[symbol]
+        sifted_position = (original_position + sift)%26
+        return self.sift_symbol[sifted_position]
 
 
 # Press the green button in the gutter to run the script.
