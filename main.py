@@ -3,6 +3,7 @@ from math import gcd, sqrt
 from collections import defaultdict, Counter
 import os
 import numpy as np
+english_alphabets = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 def find_gcd(numbers):
     x = numbers[0]
@@ -110,7 +111,7 @@ class Symbol():
     def __init__(self):
         self.symbol_sift = {}
         self.sift_symbol = {}
-        symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        symbols = english_alphabets
         for i in range(len(symbols)):
             self.symbol_sift[symbols[i]] = i
             self.sift_symbol[i] = symbols[i]
@@ -135,8 +136,13 @@ def find_key_text(cipher_text_file, key_len, print_key = False):
             subs_rel_sift[i] = mic_rel_sift(subs_0, sub_i)
 
         print(subs_rel_sift)
-        stop_words = ['WHAT', 'WHERE', 'HOWEVER', 'WERE', 'HAVE',
-                      'DOES', 'BECAUSE', 'THUS', 'HENCE', 'THERE']
+        # stop_words = ['WHAT', 'WHERE', 'HOWEVER', 'WERE', 'HAVE',
+        #               'DOES', 'BECAUSE', 'THUS', 'HENCE', 'THERE']
+
+        english_char_freq = [0.08167, 0.01492, 0.02782, 0.04253, 0.12702, 0.02228, 0.02015, 0.06094, 0.06966, 0.00153,
+                        0.00772, 0.04025, 0.02406, 0.06749, 0.07507, 0.01929, 0.00095, 0.05987, 0.06327, 0.09056,
+                        0.02758, 0.00978, 0.02360, 0.00150, 0.01974, 0.00074]
+        english_freq = {english_alphabets[i]: english_char_freq[i] for i in range(26)}
         # finding the actual key_cod
         symbols = Symbol()
         for i in range(26):
@@ -146,9 +152,26 @@ def find_key_text(cipher_text_file, key_len, print_key = False):
             decipher = vigenere_decipher(cipher, key)
             ic = index_coincidence(decipher)
 
-            for word in stop_words:
-                if word in decipher:
-                    return ''.join([symbols.sifted_symbol('A', sift) for sift in key]), decipher
+            decipher_freq = Counter(decipher)
+            n = sum(decipher_freq.values(), 0.0)
+            for k, v in decipher_freq.items():
+                decipher_freq[k] /= n
+
+            found_char_freq = 0
+            for symbol in decipher_freq.keys():
+                if (decipher_freq[symbol] >= english_freq[symbol] - english_freq[symbol]*0.50) and \
+                        (decipher_freq[symbol] <= (english_freq[symbol] + english_freq[symbol]*0.50)):
+                    found_char_freq += 1
+
+            if found_char_freq >= (len(decipher_freq.keys())//2):
+                return ''.join([symbols.sifted_symbol('A', sift) for sift in key]), decipher
+            else:
+                None
+
+            # for word in stop_words:
+            #     if word in decipher:
+            #         return ''.join([symbols.sifted_symbol('A', sift) for sift in key]), decipher
+
 
 def vigenere_decipher(cipher, key):
     symbols = Symbol()
