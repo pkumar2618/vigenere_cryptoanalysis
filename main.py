@@ -2,6 +2,7 @@ import sys
 from math import gcd, sqrt
 from collections import defaultdict, Counter
 import os
+import numpy as np
 
 def find_gcd(numbers):
     x = numbers[0]
@@ -61,7 +62,7 @@ def kasiski(file_name):
     return key_size_counter
 
 
-def incident_coeff(cipher_text_file, key_sizes, print_key = False):
+def key_len_subs_ic(cipher_text_file, key_sizes, print_key = False):
     with open(cipher_text_file, 'r') as f_read:
         cipher = f_read.read()
         cipher_len = len(cipher)
@@ -69,21 +70,122 @@ def incident_coeff(cipher_text_file, key_sizes, print_key = False):
         for key_size in key_sizes:
             sub_strings_ic = {}
             for i in range(key_size):
-                i_count = Counter([cipher[j] for j in range(i, cipher_len, key_size)])
-                N = sum(i_count.values())
-                IC_value = sum([v*(v-1) for v in i_count.values()])/ (N*(N-1))
-                sub_strings_ic[i] = IC_value
-                if print_key:
-                    if IC_value >= 0.065 and IC_value < 0.068:
-                        return key_size
+                i_string = ''.join([cipher[j] for j in range(i, cipher_len, key_size)])
+                sub_strings_ic[i] = index_coincidence(i_string)
 
             keys_sub_ics[key_size] = sub_strings_ic
-            current_ic = 1
-        return keys_sub_ics
+        if print_key:
+            keys = set()
+            for k, v in keys_sub_ics.items():
+                # average_ic = sum(v.values())/k
+                for ic in v.values():
+                    if ic >= 0.065 and ic < 0.07:
+                        keys.add(k)
+            return keys
+        else:
+            return keys_sub_ics
 
 
-def mutual_ic(cipher_text_file, key_sizes, print_key = False):
-    pass
+def mutual_ic(x_string, y_string, type='string'):
+    if type == 'string':
+        x_f = Counter(x_string)
+        x_n = sum(x_f.values())
+
+        y_f = Counter(y_string)
+        y_n = sum(y_f.values())
+
+    elif type == 'Counter':
+        x_f = x_string
+        x_n = sum(x_f.values())
+        y_f = y_string
+        y_n = sum(y_f.values())
+
+    common_symbols = set(x_f.keys()).intersection(y_f.keys())
+    MIC_numerator = 0
+    for k in common_symbols:
+        MIC_numerator  += x_f[k]*y_f[k]
+    return MIC_numerator/(x_n*y_n)
+
+class Symbol():
+    def __init__(self):
+        self.symbol_sift = {}
+        self.sift_symbol = {}
+        symbols = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        for i in range(len(symbols)):
+            self.symbol_sift[symbols[i]] = i
+            self.sift_symbol[i] = symbols[i]
+
+    def to_sift(self, symbol):
+        return self.symbol_sift[symbol]
+
+    def sifted_symbol(self, symbol, sift):
+        original_position = self.symbol_sift[symbol]
+        sifted_position = (original_position + sift)%26
+        return self.sift_symbol[sifted_position]
+
+
+def find_key_text(cipher_text_file, key_len, print_key = False):
+    with open(cipher_text_file, 'r') as f_read:
+        cipher = f_read.read()
+        cipher_len = len(cipher)
+        subs_rel_sift = {}
+        subs_0 = ''.join([cipher[j] for j in range(0, cipher_len, key_len)])
+        for i in range(1, key_len):
+            sub_i = ''.join([cipher[j] for j in range(i, cipher_len, key_len)])
+            subs_rel_sift[i] = mic_rel_sift(subs_0, sub_i)
+
+        print(subs_rel_sift)
+
+        # finding the actual key_code
+        for i in range(26):
+            key = [i]
+            for k, v in subs_rel_sift.items():
+                key.append((i + 26-v) % 26)
+            decipher = vigenere_decipher(cipher, key)
+            ic = index_coincidence(decipher)
+            if ic >= 0.6:
+                return key, decipher
+
+def vigenere_decipher(cipher, key):
+    symbol = Symbol()
+    caesar_text = ''
+    cipher_len = len(cipher)
+    block_size = len(key)
+    for i in range(0, cipher_len, block_size):
+        block_text = cipher[i:i+block_size]
+        sifted_block_text = ''.join([symbol.sifted_symbol(och, -sch) for och, sch in zip(block_text, key)])
+        caesar_text = caesar_text + sifted_block_text
+    return caesar_text
+
+
+def mic_rel_sift(x_string, y_string):
+    x_f = Counter(x_string)
+    x_n = sum(x_f.values())
+
+    y_original = Counter(y_string)
+
+    symbol = Symbol()
+    mic_trend = []
+    for sift in range(26):
+        y_sifted = Counter()
+        for k in y_original:
+            y_sifted[symbol.sifted_symbol(k, sift)] = y_original[k]
+
+        mic_y_sifted = mutual_ic(x_f, y_sifted, type='Counter')
+        mic_trend.append(mic_y_sifted)
+
+    # finding the rel sift
+    sift = np.argmax(np.array(mic_trend))
+    # sifts = [sift for sift, value in enumerate(mic_trend) if value >= 0.059 and value < 0.07]
+    return sift
+
+def index_coincidence(x_string):
+    x_f = Counter(x_string)
+    x_n = sum(x_f.values())
+    IC_numerator = 0
+    for k in x_f.keys():
+        IC_numerator  += x_f[k]*(x_f[k]-1)
+    return IC_numerator/(x_n*(x_n-1))
 
 def decipher(cipher_text_file, key_size):
     """
@@ -95,12 +197,12 @@ def decipher(cipher_text_file, key_size):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    n_tests = 2  # sys.argv[1]
+    n_tests = 1  # sys.argv[1]
     for tn in range(n_tests):
         curr_dir = os.getcwd()
         file_name = os.path.join(curr_dir, f'tests/test{tn+1}')
         possible_key_size = kasiski(file_name)
-        print(possible_key_size)
+        # print(possible_key_size)
         # consider only keys of size more than 3 and keys with counter
         possible_keys = possible_key_size.most_common(7) # considering onl
         keys_to_try = []
@@ -111,5 +213,7 @@ if __name__ == '__main__':
                 keys_to_try.append(k)
         # print(keys_to_try)
 
-        keys_sub_ics = incident_coeff(file_name, keys_to_try, print_key=True)
-        print(keys_sub_ics)
+        keys_len = key_len_subs_ic(file_name, keys_to_try, print_key=True)
+        print(keys_len)
+        print(find_key_text(file_name, keys_len.pop()))
+        # print(mutual_ic("ABACA", "BABAA"))
