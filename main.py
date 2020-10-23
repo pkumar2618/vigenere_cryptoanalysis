@@ -135,27 +135,31 @@ def find_key_text(cipher_text_file, key_len, print_key = False):
             subs_rel_sift[i] = mic_rel_sift(subs_0, sub_i)
 
         print(subs_rel_sift)
-
-        # finding the actual key_code
+        stop_words = ['WHAT', 'WHERE', 'HOWEVER', 'WERE', 'HAVE',
+                      'DOES', 'BECAUSE', 'THUS', 'HENCE', 'THERE']
+        # finding the actual key_cod
+        symbols = Symbol()
         for i in range(26):
             key = [i]
             for k, v in subs_rel_sift.items():
                 key.append((i + 26-v) % 26)
             decipher = vigenere_decipher(cipher, key)
             ic = index_coincidence(decipher)
-            if ic >= 0.6:
-                return key, decipher
+
+            for word in stop_words:
+                if word in decipher:
+                    return ''.join([symbols.sifted_symbol('A', sift) for sift in key]), decipher
 
 def vigenere_decipher(cipher, key):
-    symbol = Symbol()
-    caesar_text = ''
+    symbols = Symbol()
+    plain_text = ''
     cipher_len = len(cipher)
     block_size = len(key)
     for i in range(0, cipher_len, block_size):
         block_text = cipher[i:i+block_size]
-        sifted_block_text = ''.join([symbol.sifted_symbol(och, -sch) for och, sch in zip(block_text, key)])
-        caesar_text = caesar_text + sifted_block_text
-    return caesar_text
+        sifted_block_text = ''.join([symbols.sifted_symbol(och, -sch) for och, sch in zip(block_text, key)])
+        plain_text = plain_text + sifted_block_text
+    return plain_text
 
 
 def mic_rel_sift(x_string, y_string):
@@ -187,17 +191,11 @@ def index_coincidence(x_string):
         IC_numerator  += x_f[k]*(x_f[k]-1)
     return IC_numerator/(x_n*(x_n-1))
 
-def decipher(cipher_text_file, key_size):
-    """
-    :param cipher_text_file:
-    :param key_size:
-    :return: plain_text and key
-    """
-    pass
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    n_tests = 1  # sys.argv[1]
+    n_tests = 2  # sys.argv[1]
     for tn in range(n_tests):
         curr_dir = os.getcwd()
         file_name = os.path.join(curr_dir, f'tests/test{tn+1}')
