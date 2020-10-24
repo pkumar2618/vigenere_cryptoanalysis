@@ -5,6 +5,7 @@ import os
 import numpy as np
 english_alphabets = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
+
 def kasiski(file_name):
     repeating_graphs_dict = defaultdict(list)
     with open(file_name, 'r') as f_read:
@@ -112,9 +113,9 @@ def mic_rel_sift(x_string, y_string):
         mic_trend.append(mic_y_sifted)
 
     # finding the rel sift
-    sift = np.argmax(np.array(mic_trend))
+    sift = np.argwhere(mic_trend == np.max(mic_trend))
     # sifts = [sift for sift, value in enumerate(mic_trend) if value >= 0.059 and value < 0.07]
-    return sift
+    return sift.flatten().tolist()
 
 
 def mutual_ic(x_string, y_string, type='string'):
@@ -158,46 +159,69 @@ def find_key_text(cipher_text_file, key_len, print_key = False):
         english_freq = {english_alphabets[i]: english_char_freq[i] for i in range(26)}
         # finding the actual key_cod
         symbols = Symbol()
+        found_key_decipher = []
         for i in range(26):
-            key = [i]
+            key = [[i]]
             for k, v in subs_rel_sift.items():
-                key.append((i + 26-v) % 26)
-            decipher = vigenere_decipher(cipher, key)
-            ic = index_coincidence(decipher)
+                key.append(list((i + 26-np.array(v)) % 26))
+            key_decipher = vigenere_decipher(cipher, key)
+            # ic = index_coincidence(decipher)
 
-            decipher_freq = Counter(decipher)
-            n = sum(decipher_freq.values(), 0.0)
-            for k, v in decipher_freq.items():
-                decipher_freq[k] /= n
+            key_decipher_freq = [(key, decipher, Counter(decipher)) for key, decipher in key_decipher]
+            for key, decipher, decipher_freq in key_decipher_freq:
+                n = sum(decipher_freq.values(), 0.0)
+                for k, v in decipher_freq.items():
+                    decipher_freq[k] /= n
 
-            found_char_freq = 0
-            for symbol in decipher_freq.keys():
-                if (decipher_freq[symbol] >= english_freq[symbol] - english_freq[symbol]*0.50) and \
-                        (decipher_freq[symbol] <= (english_freq[symbol] + english_freq[symbol]*0.50)):
-                    found_char_freq += 1
+                found_char_freq = 0
+                for symbol in decipher_freq.keys():
+                    if (decipher_freq[symbol] >= english_freq[symbol] - english_freq[symbol]*0.50) and \
+                            (decipher_freq[symbol] <= (english_freq[symbol] + english_freq[symbol]*0.50)):
+                        found_char_freq += 1
 
-            if found_char_freq >= (len(decipher_freq.keys())//2):
-                return ''.join([symbols.sifted_symbol('A', sift) for sift in key]), decipher
-            else:
-                None
+                if found_char_freq >= (len(decipher_freq.keys())//2):
+                    found_key_decipher.append((''.join([symbols.sifted_symbol('A', sift) for sift in key]), decipher))
+                else:
+                    None
 
             # for word in stop_words:
             #     if word in decipher:
             #         return ''.join([symbols.sifted_symbol('A', sift) for sift in key]), decipher
-
+    return found_key_decipher
 
 def vigenere_decipher(cipher, key):
     symbols = Symbol()
     plain_text = ''
     cipher_len = len(cipher)
     block_size = len(key)
-    for i in range(0, cipher_len, block_size):
-        block_text = cipher[i:i+block_size]
-        sifted_block_text = ''.join([symbols.sifted_symbol(och, -sch) for och, sch in zip(block_text, key)])
-        plain_text = plain_text + sifted_block_text
-    return plain_text
+    keys = [[]]
+    for k_sift in key:
+        if len(k_sift)>1:
+            keys = [flatten(keys[:]) for i in range(len(k_sift))]
+            for i in range(len(keys)):
+                kj = k_sift[i%len(k_sift)]
+                keys[i].append(kj)
+        else:
+            for i in range(len(keys)):
+                keys[i].append(k_sift[0])
 
+    key_text = []
+    for key in keys:
+        for i in range(0, cipher_len, block_size):
+            block_text = cipher[i:i+block_size]
+            sifted_block_text = ''.join([symbols.sifted_symbol(och, -sch) for och, sch in zip(block_text, key)])
+            plain_text = plain_text + sifted_block_text
+        key_text.append((key, plain_text))
+    return key_text
 
+def flatten(key):
+    flat_key = []
+    for item in key:
+        if isinstance(item, list):
+            flat_key = flat_key + item
+        elif isinstance(item, int):
+            flat_key.append(item)
+    return flat_key
 
 class Symbol():
     def __init__(self):
@@ -220,7 +244,7 @@ class Symbol():
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     n_tests = 2  # sys.argv[1]
-    for tn in range(n_tests):
+    for tn in range(1, n_tests):
         curr_dir = os.getcwd()
         file_name = os.path.join(curr_dir, f'tests/test{tn+1}')
         possible_key_size = kasiski(file_name)
