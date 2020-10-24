@@ -290,18 +290,20 @@ if __name__ == '__main__':
             f_write.write(json.dumps(ic_json_item, indent=4))
 
         keys_len = ic_json_item['verified_key_lengths']
-        json_key_mic_text = find_key_text(file_name, keys_len.pop())
-        json_key_mic = []
-        json_key_text = []
-        # for json_item in json_key_mic_text:
-        json_key_mic.append({k:v for k, v in json_key_mic_text.items() if not k=='key_text_tuples'})
-        json_key_text.append({k:v for k, v in json_key_mic_text.items() if k == 'key_text_tuples'})
+        # keys_len = [6, 2]
+        for key_len in keys_len:
+            json_key_mic_text = find_key_text(file_name, key_len)
+            json_key_mic = []
+            json_key_text = []
+            # for json_item in json_key_mic_text:
+            json_key_mic.append({k:v for k, v in json_key_mic_text.items() if not k=='key_text_tuples'})
+            json_key_text.append({k:v for k, v in json_key_mic_text.items() if k == 'key_text_tuples'})
 
-        output_file_key_mic = os.path.join(output_directory, f'test{tn + 1}_key_mic')
-        with open(output_file_key_mic,'w') as f_write:
-            json_item_string = json.dumps(json_key_mic, indent=4)
-            f_write.write(json_item_string)
+            output_file_key_mic = os.path.join(output_directory, f'test{tn + 1}_key_mic')
+            with open(output_file_key_mic,'a+') as f_write:
+                json_item_string = json.dumps(json_key_mic, indent=4)
+                f_write.write(json_item_string)
 
-        output_file_text = os.path.join(output_directory, f'text{tn+1}')
-        with open(output_file_text,'w') as f_write:
-            f_write.write(json.dumps(json_key_text, indent=4))
+            output_file_text = os.path.join(output_directory, f'text{tn+1}')
+            with open(output_file_text,'a+') as f_write:
+                f_write.write(json.dumps(json_key_text, indent=4))

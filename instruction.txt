@@ -4,3 +4,8 @@ sh run.sh 2
 # Import Libraries
 Numpy, json
 
+# Assumptions
+1. Key length is greater that 2
+2. The relative sift is obtained by taking considering the sift which gives maximum MIC among the 26 possible sifts.
+ between sub_strings corresponding to k0 and ki
+
