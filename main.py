@@ -267,7 +267,7 @@ class Symbol():
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    n_tests = 2  # sys.argv[1]
+    n_tests = int(sys.argv[1])
     for tn in range(0, n_tests):
         curr_dir = os.getcwd()
         file_name = os.path.join(curr_dir, f'tests/test{tn + 1}')

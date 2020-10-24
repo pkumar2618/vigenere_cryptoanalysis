@@ -1,0 +1,6 @@
+# run on python 3.7 or higher
+sh run.sh 2
+
+# Import Libraries
+Numpy, json
+
